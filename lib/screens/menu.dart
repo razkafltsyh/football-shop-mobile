@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:football_shop/widgets/left_drawer.dart';
-import 'package:football_shop/widgets/item_card.dart';
+import 'package:football_shop/widgets/product_card.dart';
 
 class MyHomePage extends StatelessWidget {
   MyHomePage({super.key});
@@ -13,6 +13,7 @@ class MyHomePage extends StatelessWidget {
     ItemHomepage("All Products", Icons.store, Colors.blue),
     ItemHomepage("My Products", Icons.inventory, Colors.green),
     ItemHomepage("Add Product", Icons.add_circle, Colors.red),
+    ItemHomepage("Logout", Icons.logout, Colors.grey),
   ];
 
   @override

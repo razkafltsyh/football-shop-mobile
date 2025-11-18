@@ -1,32 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:football_shop/widgets/left_drawer.dart';
+import 'package:football_shop/screens/menu.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
 
-class ShopFormPage extends StatefulWidget {
-  const ShopFormPage({super.key});
+class ProductFormPage extends StatefulWidget {
+  const ProductFormPage({super.key});
 
   @override
-  State<ShopFormPage> createState() => _ShopFormPageState();
+  State<ProductFormPage> createState() => _ProductFormPageState();
 }
 
-class _ShopFormPageState extends State<ShopFormPage> {
+class _ProductFormPageState extends State<ProductFormPage> {
   final _formKey = GlobalKey<FormState>();
+
+  // Variabel untuk menyimpan input user
   String _name = "";
   int _price = 0;
   String _description = "";
-  String _category = "jersey";
+  String _category = "jersey"; // Default sesuai model
   String _thumbnail = "";
   bool _isFeatured = false;
 
-  final List<String> _categories = ['jersey', 'shoes', 'short', 'accessories'];
+  // List kategori sesuai dengan choices di Django Model
+  final List<String> _categories = ['jersey', 'shoes', 'shorts', 'accessories'];
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Center(child: Text('Form Tambah Produk')),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
       ),
+      // Pastikan LeftDrawer sudah diimport dengan benar
       drawer: const LeftDrawer(),
       body: Form(
         key: _formKey,
@@ -59,7 +69,7 @@ class _ShopFormPageState extends State<ShopFormPage> {
                 ),
               ),
 
-              // === Harga Produk ===
+              // === Harga (Price) ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: TextFormField(
@@ -70,7 +80,7 @@ class _ShopFormPageState extends State<ShopFormPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.number, // Keyboard angka
                   onChanged: (String? value) {
                     setState(() {
                       _price = int.tryParse(value!) ?? 0;
@@ -83,9 +93,6 @@ class _ShopFormPageState extends State<ShopFormPage> {
                     if (int.tryParse(value) == null) {
                       return "Harga harus berupa angka!";
                     }
-                    if (int.parse(value) <= 0) {
-                      return "Harga harus lebih dari 0!";
-                    }
                     return null;
                   },
                 ),
@@ -95,10 +102,10 @@ class _ShopFormPageState extends State<ShopFormPage> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: TextFormField(
-                  maxLines: 4,
+                  maxLines: 5,
                   decoration: InputDecoration(
                     hintText: "Deskripsi Produk",
-                    labelText: "Deskripsi Produk",
+                    labelText: "Deskripsi",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
                     ),
@@ -128,14 +135,14 @@ class _ShopFormPageState extends State<ShopFormPage> {
                     ),
                   ),
                   initialValue: _category,
-                  items: _categories
-                      .map(
-                        (cat) => DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat[0].toUpperCase() + cat.substring(1)),
-                        ),
-                      )
-                      .toList(),
+                  items: _categories.map((String category) {
+                    return DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(
+                        category[0].toUpperCase() + category.substring(1),
+                      ),
+                    );
+                  }).toList(),
                   onChanged: (String? newValue) {
                     setState(() {
                       _category = newValue!;
@@ -144,12 +151,12 @@ class _ShopFormPageState extends State<ShopFormPage> {
                 ),
               ),
 
-              // === URL Thumbnail ===
+              // === Thumbnail URL ===
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: TextFormField(
                   decoration: InputDecoration(
-                    hintText: "URL Thumbnail",
+                    hintText: "URL Thumbnail (opsional)",
                     labelText: "URL Thumbnail",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
@@ -159,12 +166,6 @@ class _ShopFormPageState extends State<ShopFormPage> {
                     setState(() {
                       _thumbnail = value!;
                     });
-                  },
-                  validator: (String? value) {
-                    if (value == null || value.isEmpty) {
-                      return "URL Thumbnail tidak boleh kosong!";
-                    }
-                    return null;
                   },
                 ),
               ),
@@ -190,50 +191,46 @@ class _ShopFormPageState extends State<ShopFormPage> {
                   padding: const EdgeInsets.all(8.0),
                   child: ElevatedButton(
                     style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(Colors.blue),
+                      backgroundColor: WidgetStateProperty.all(Colors.indigo),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text('Produk berhasil disimpan!'),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Nama: $_name'),
-                                    Text('Harga: $_price'),
-                                    Text('Deskripsi: $_description'),
-                                    Text('Kategori: $_category'),
-                                    Text('Thumbnail: $_thumbnail'),
-                                    Text(
-                                      'Unggulan: ${_isFeatured ? "Ya" : "Tidak"}',
-                                    ),
-                                  ],
+                        // Kirim data ke Django
+                        final response = await request.postJson(
+                          "http://localhost:8000/create-flutter/", // Sesuaikan URL view Django kamu
+                          jsonEncode({
+                            "name": _name,
+                            "price": _price,
+                            "description": _description,
+                            "category": _category,
+                            "thumbnail": _thumbnail,
+                            "is_featured": _isFeatured,
+                          }),
+                        );
+
+                        if (context.mounted) {
+                          if (response['status'] == 'success') {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Produk berhasil disimpan!"),
+                              ),
+                            );
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyHomePage(),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Gagal: ${response['message'] ?? 'Kesalahan tidak diketahui'}",
                                 ),
                               ),
-                              actions: [
-                                TextButton(
-                                  child: const Text('OK'),
-                                  onPressed: () {
-                                    _formKey.currentState!.reset();
-                                    setState(() {
-                                      _name = "";
-                                      _price = 0;
-                                      _description = "";
-                                      _thumbnail = "";
-                                      _category = 'jersey';
-                                      _isFeatured = false;
-                                    });
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                              ],
                             );
-                          },
-                        );
+                          }
+                        }
                       }
                     },
                     child: const Text(
